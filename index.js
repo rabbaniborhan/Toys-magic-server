@@ -1,13 +1,14 @@
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const app = express();
 const port = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
 
-const { MongoClient, ServerApiVersion } = require("mongodb");
+
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.msnuvxp.mongodb.net/?retryWrites=true&w=majority`;
 
 const client = new MongoClient(uri, {
@@ -20,11 +21,33 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
-
     const db = client.db("toysMaker");
     const toysCollection = db.collection("toys");
+
+    const indexKeyes = { toyname: 1, category: 1 };
+    const indexOptions = { name: "nameCategory" };
+    const result = await toysCollection.createIndex(indexKeyes, indexOptions);
+
+
+    app.get("/toysSearchBytitle/:text", async(req,res)=>{
+      const searchText =req.params.text;
+      const result =await toysCollection.find({
+        $or:[
+          {name:{$regex: searchText, $options:"i"}},
+          {category:{$regex: searchText ,$options:"i"}}
+        ]
+      }).toArray();
+      res.send(result)
+    })
+
+
+    app.get("/toy/:id",async(req,res)=>{
+      const id =req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const result = await toysCollection.findOne(query);
+      res.send(result);
+    })
 
     app.get("/alltoys", async (req, res) => {
       const result = await toysCollection.find({}).toArray();
@@ -34,11 +57,9 @@ async function run() {
     app.post("/add-toys", async (req, res) => {
       const body = req.body;
       const result = await toysCollection.insertOne(body);
-
       res.send(result);
     });
 
-    // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
