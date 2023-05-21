@@ -20,15 +20,16 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    await client.connect();
+    
     const db = client.db("toysMaker");
     const toysCollection = db.collection("toys");
 
-    const indexKeyes = { toyname: 1, category: 1 };
-    const indexOptions = { name: "nameCategory" };
-    const result = await toysCollection.createIndex(indexKeyes, indexOptions);
+   
 
     app.get("/toysSearchBytitle/:text", async (req, res) => {
+      const indexKeyes = { toyname: 1, category: 1 };
+      const indexOptions = { name: "nameCategory" };
+      const result2 = await toysCollection.createIndex(indexKeyes, indexOptions);
       const searchText = req.params.text;
       const result = await toysCollection
         .find({
@@ -49,9 +50,15 @@ async function run() {
     });
 
     app.get("/alltoys", async (req, res) => {
-      const result = await toysCollection.find({}).toArray();
+      const result = await toysCollection.find({}).limit(20).toArray();
       res.send(result);
     });
+
+
+    app.get("/alltoys/:text",async(req,res)=>{
+
+      console.log(req.params.text);
+    })
 
     app.get("/mytoys/:email", async (req, res) => {
       const email = req.params.email;
